@@ -6,8 +6,8 @@
 #define HEIGHT 600
 #define COLOR_WHITE 0xffffffff
 #define COLOR_BLACK 0x00000000
-#define MYCOLOR 0x25504fff
-#define RAYS_NUMBER 120
+#define MYCOLOR 0xffdd00
+#define RAYS_NUMBER 200
 #define COLOR_GRAY 0xefefefef
 
 struct Circle {
@@ -16,11 +16,7 @@ struct Circle {
     double r;
 };
 
-struct Square {
-    double x;
-    double y;
-    double l;
-};
+
 
 struct Rect {
     double x;
@@ -54,8 +50,8 @@ void FillCircle(SDL_Surface* surface, struct Circle circle, Uint32 color) {
 }
 
 void FillRect(SDL_Surface* surface, struct Rect rect, Uint32 color) {
-    for (double i = rect.x ; i <= rect.x + rect.w; i++) {
-        for (double j = rect.y; j <= rect.y + rect.h ; j++) {
+    for (double i = rect.x - rect.w/2 ; i <= rect.x + rect.w/2; i++) {
+        for (double j = rect.y - rect.h/2; j <= rect.y + rect.h/2 ; j++) {
             SDL_Rect pixel = (SDL_Rect) {i,j, 1,1};
             SDL_FillRect(surface, &pixel, color);
         }
@@ -74,26 +70,27 @@ void StoreRays(struct Circle circle, struct Ray rays[RAYS_NUMBER]) {
 
 }
 
-int queryObjectHit(double x, double y, struct Circle shadow) {
-    if ( pow(x - shadow.x,2) + pow(y - shadow.y,2) <= pow(shadow.r,2) ) {
-        return 1;
-    } else {return 0;}
-}
-/*
-int queryObjectHitSquare(double x, double y, struct Circle shadow) {
+int queryObjectHitSquare(double x, double y, struct Rect shadow) {
 
-    double lowerExclusionX = shadow.x - shadow.r;
-    double upperExclusionX = shadow.x + shadow.r;
-    double lowerExclusionY = shadow.y - shadow.r;
-    double upperExclusionY = shadow.y + shadow.r;
+    double lowerExclusionX = shadow.x - shadow.w/2;
+    double upperExclusionX = shadow.x + shadow.w/2;
+    double lowerExclusionY = shadow.y - shadow.h/2;
+    double upperExclusionY = shadow.y + shadow.h/2;
 
     if ((x >= lowerExclusionX && x <= upperExclusionX) && (y >= lowerExclusionY && y <= upperExclusionY)) {return 1;}
+
     else {return 0;}
-
 }
-*/
 
-void FillRays(SDL_Surface* surface, struct Ray rays[RAYS_NUMBER], Uint32 color, struct Circle shadow) {
+int queryObjectHit(double x, double y, struct Circle shadow, struct Rect shadow_rect) {
+    if ( pow(x - shadow.x,2) + pow(y - shadow.y,2) <= pow(shadow.r,2) ) {
+        return 1;
+    } else  {
+       queryObjectHitSquare(x, y, shadow_rect);
+    }
+}
+
+void FillRays(SDL_Surface* surface, struct Ray rays[RAYS_NUMBER], Uint32 color, struct Circle shadow, struct Rect rect) {
 
     for (int i = 0; i < RAYS_NUMBER ; i++) {
         struct Ray ray = rays[i];
@@ -113,7 +110,7 @@ void FillRays(SDL_Surface* surface, struct Ray rays[RAYS_NUMBER], Uint32 color, 
             SDL_Rect pixel = {x_draw, y_draw, 1, 1};
             SDL_FillRect(surface, &pixel, color);
 
-            object_hit = queryObjectHit(x_draw, y_draw, shadow);
+            object_hit = queryObjectHit(x_draw, y_draw, shadow, rect);
 
             if (x_draw < 0 || x_draw > WIDTH) {
                 end_of_screen = 1;
@@ -135,14 +132,15 @@ int main(void) {
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     SDL_Surface* surface = SDL_GetWindowSurface(window);
 
-    struct Circle circle = {200, 200, 50};
-    struct Circle shadow_circle = {700, 300, 100};
+    struct Circle sun = {200, 200, 25};
+    struct Circle shadow_circle = {700, 300, 50};
+    struct Rect shadow_rect = {500, 500, 100, 50};
 
     SDL_Rect erase_rect = {0,0,WIDTH, HEIGHT};
 
     int simulation_running = 1;
     struct Ray rays[RAYS_NUMBER];
-    StoreRays(circle, rays);
+    StoreRays(sun, rays);
     SDL_Event event;
 
     while (simulation_running) {
@@ -152,18 +150,34 @@ int main(void) {
             if (event.type == SDL_QUIT) {
                 simulation_running = 0;
             }
-
+            if (event.type == SDL_KEYDOWN) {
+                if (event.key.keysym.sym == SDLK_a) {
+                    int mouseX, mouseY;
+                    SDL_GetMouseState(&mouseX, &mouseY);
+                    shadow_rect.x = mouseX;
+                    shadow_rect.y = mouseY;
+                }
+            }
+            if (event.type == SDL_KEYDOWN) {
+                if (event.key.keysym.sym == SDLK_s) {
+                    int mouseX, mouseY;
+                    SDL_GetMouseState(&mouseX, &mouseY);
+                    shadow_circle.x = mouseX;
+                    shadow_circle.y = mouseY;
+                }
+            }
 
             if (event.motion.state != 0) {
-                circle.x = event.motion.x;
-                circle.y = event.motion.y;
-                StoreRays(circle, rays);
+                sun.x = event.motion.x;
+                sun.y = event.motion.y;
+                StoreRays(sun, rays);
             }
         }
         SDL_FillRect(surface, &erase_rect, COLOR_BLACK);
-        FillRays(surface, rays, MYCOLOR, shadow_circle);
-        FillCircle(surface, circle, MYCOLOR);
+        FillRays(surface, rays, MYCOLOR, shadow_circle, shadow_rect);
+        FillCircle(surface, sun, MYCOLOR);
         FillCircle(surface, shadow_circle, COLOR_WHITE);
+        FillRect(surface, shadow_rect, COLOR_WHITE);
         SDL_UpdateWindowSurface(window);
         SDL_Delay(10);
     }
