@@ -17,7 +17,6 @@ struct Circle {
 };
 
 
-
 struct Rect {
     double x;
     double y;
@@ -48,6 +47,7 @@ void FillCircle(SDL_Surface* surface, struct Circle circle, Uint32 color) {
        }
     }
 }
+
 
 void FillRect(SDL_Surface* surface, struct Rect rect, Uint32 color) {
     for (double i = rect.x - rect.w/2 ; i <= rect.x + rect.w/2; i++) {
@@ -151,17 +151,12 @@ int main(void) {
                 simulation_running = 0;
             }
             if (event.type == SDL_KEYDOWN) {
+                int mouseX, mouseY;
+                SDL_GetMouseState(&mouseX, &mouseY);
                 if (event.key.keysym.sym == SDLK_a) {
-                    int mouseX, mouseY;
-                    SDL_GetMouseState(&mouseX, &mouseY);
                     shadow_rect.x = mouseX;
                     shadow_rect.y = mouseY;
-                }
-            }
-            if (event.type == SDL_KEYDOWN) {
-                if (event.key.keysym.sym == SDLK_s) {
-                    int mouseX, mouseY;
-                    SDL_GetMouseState(&mouseX, &mouseY);
+                } else if (event.key.keysym.sym == SDLK_s) {
                     shadow_circle.x = mouseX;
                     shadow_circle.y = mouseY;
                 }
@@ -173,11 +168,13 @@ int main(void) {
                 StoreRays(sun, rays);
             }
         }
-        SDL_FillRect(surface, &erase_rect, COLOR_BLACK);
+        SDL_FillRect(surface, NULL, COLOR_BLACK);
+
         FillRays(surface, rays, MYCOLOR, shadow_circle, shadow_rect);
-        FillCircle(surface, sun, MYCOLOR);
         FillCircle(surface, shadow_circle, COLOR_WHITE);
         FillRect(surface, shadow_rect, COLOR_WHITE);
+
+        FillCircle(surface, sun, MYCOLOR);
         SDL_UpdateWindowSurface(window);
         SDL_Delay(10);
     }
